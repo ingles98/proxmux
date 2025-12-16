@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import json
 import yaml
-from .utils import log_warn
+from utils import log_warn
 
 # ------------------------
 # HELPERS

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from .utils import log_warn, log_info, PACKAGE_MANAGERS
+from utils import log_warn, log_info, PACKAGE_MANAGERS
 
 
 # ------------------------

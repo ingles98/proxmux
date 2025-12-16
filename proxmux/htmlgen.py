@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 import yaml
 from jinja2 import Template, TemplateError
-from .utils import log_info, log_error
+from utils import log_info, log_error
 
 TEMPLATE_PATH = Path(__file__).parent / "templates" / "viewer.html"
 

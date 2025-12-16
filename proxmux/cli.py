@@ -3,10 +3,10 @@
 import argparse
 from pathlib import Path
 
-from .utils import log_error
-from .discover import discover_stack
-from .htmlgen import generate_html_from_yaml, generate_html_from_stack
-from .updates import run_update_check
+from utils import log_error
+from discover import discover_stack
+from htmlgen import generate_html_from_yaml, generate_html_from_stack
+from updates import run_update_check
 
 
 def main():
