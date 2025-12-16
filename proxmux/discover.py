@@ -300,7 +300,9 @@ def discover_guest(
     """
     log_info(f"Discovering guest: {'LXC' if lxc else 'VM'} {guest_id}")
     info: Dict[str, Any] = {"type": "lxc" if lxc else "vm"}
-    info["hostname"] = guest_exec(guest_id, "hostname", lxc) or existing_hostname or "unknown"
+    info["hostname"] = (
+        guest_exec(guest_id, "hostname", lxc) or existing_hostname or "unknown"
+    )
 
     os_release = guest_exec(guest_id, "cat /etc/os-release", lxc)
     info["os"] = _parse_os_release(os_release)
@@ -312,10 +314,16 @@ def discover_guest(
 
     pkg = detect_package_manager(guest_id, lxc)
     pve_update = detect_pve_updateable(guest_id, lxc)
-    update_cmd = _compose_update_command(pkg.get("update"), docker) if False else _compose_update_command(pkg.get("update_command", "") if isinstance(pkg, dict) else pkg.get("update_command", ""), docker)  # keep compatibility with pkg dict key name
-    # Normalise update_command retrieval (pkg uses "update_command" in existing code)
-    if not update_cmd:
-        update_cmd = _compose_update_command(pkg.get("update_command", "") if isinstance(pkg, dict) else "", docker)
+    update_cmd = pkg.get("update_command", "")
+    if docker["enabled"]:
+        docker_update_cmds = ["docker system prune -f"]
+        if docker["containers"]:
+            docker_update_cmds.append("docker pull $(docker images -q)")
+        if docker["compose_files"]:
+            docker_update_cmds.append(f"docker-compose -f {" ".join(docker["compose_files"])} pull")
+        docker_update = " && ".join(docker_update_cmds)
+        if docker_update:
+            update_cmd = f"{update_cmd} && {docker_update}" if update_cmd else docker_update
 
     info["package_manager"] = {
         "manager": pkg.get("name"),
