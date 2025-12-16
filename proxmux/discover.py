@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from utils import log_warn, log_info, PACKAGE_MANAGERS
+from .utils import log_debug, log_warn, log_info, PACKAGE_MANAGERS
 
 
 # ------------------------
@@ -27,8 +27,12 @@ def run(cmd: str) -> Optional[str]:
     function logs an informational warning if the command cannot be
     executed (``OSError``) and returns ``None`` for non-zero exit codes.
     """
+    log_debug(f"Running command: {cmd}")
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=False)
+        log_debug(f"\tCommand stdout: {r.stdout.strip()}")
+        log_debug(f"\tCommand stderr: {r.stderr.strip()}")
+        log_debug(f"\tCommand return code: {r.returncode}")
     except OSError as e:
         log_warn(f"Command failed: {cmd} ({e})")
         return None
@@ -103,9 +107,10 @@ def get_vm_ips(vmid: str) -> List[str]:
     if not out:
         return []
     try:
-        data = json.loads(out)
+        data = json.loads(json.loads(out)["out-data"])
         ips: List[str] = []
         for iface in data:
+            log_debug(f"\tVM {vmid} iface: {iface}")
             if iface.get("ifname") == "lo":
                 continue
             for a in iface.get("addr_info", []):
@@ -223,6 +228,67 @@ def extract_storage(cfg: Dict[str, Any], lxc: bool = True) -> None:
 # ------------------------
 # GUEST DISCOVERY
 # ------------------------
+def _parse_os_release(content: Optional[str]) -> Dict[str, str]:
+    res: Dict[str, str] = {}
+    if not content:
+        return res
+    for line in content.splitlines():
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.lower()
+        if k in {"name", "pretty_name", "id", "version_id", "version_codename"}:
+            res[k] = v.strip().strip('"').strip("'")
+    return res
+
+
+def _get_enabled_services(guest_id: str, lxc: bool) -> List[str]:
+    svc = guest_exec(
+        guest_id, "systemctl list-unit-files --type=service --state=enabled", lxc
+    )
+    if not svc:
+        return []
+    return [
+        line.split()[0]
+        for line in svc.splitlines()
+        if line.strip() and not line.startswith("UNIT FILE")
+    ]
+
+
+def _get_docker_info(guest_id: str, lxc: bool) -> Dict[str, Any]:
+    docker = {"enabled": False, "containers": [], "compose_files": []}
+    if guest_exec(guest_id, "command -v docker >/dev/null && echo yes", lxc) != "yes":
+        return docker
+    docker["enabled"] = True
+    inspect = guest_exec(guest_id, "docker inspect $(docker ps -q)", lxc)
+    try:
+        docker["containers"] = json.loads(inspect) if inspect else []
+    except json.JSONDecodeError:
+        docker["containers"] = []
+    compose = guest_exec(
+        guest_id, "find / -type f -name '*-compose.yml' 2>/dev/null", lxc
+    )
+    docker["compose_files"] = compose.splitlines() if compose else []
+    return docker
+
+
+def _compose_update_command(base: Optional[str], docker: Dict[str, Any]) -> str:
+    update_cmd = base or ""
+    if not docker.get("enabled"):
+        return update_cmd
+    docker_update_cmds = ["docker system prune -f"]
+    if docker.get("containers"):
+        docker_update_cmds.append("docker pull $(docker images -q)")
+    if docker.get("compose_files"):
+        docker_update_cmds.append(
+            f"docker-compose -f {' '.join(docker['compose_files'])} pull"
+        )
+    docker_update = " && ".join(docker_update_cmds)
+    if not docker_update:
+        return update_cmd
+    return f"{update_cmd} && {docker_update}" if update_cmd else docker_update
+
+
 def discover_guest(
     guest_id: str, lxc: bool = True, existing_hostname: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -234,65 +300,22 @@ def discover_guest(
     """
     log_info(f"Discovering guest: {'LXC' if lxc else 'VM'} {guest_id}")
     info: Dict[str, Any] = {"type": "lxc" if lxc else "vm"}
-    hostname = guest_exec(guest_id, "hostname", lxc)
-    info["hostname"] = hostname or existing_hostname or "unknown"
+    info["hostname"] = guest_exec(guest_id, "hostname", lxc) or existing_hostname or "unknown"
 
     os_release = guest_exec(guest_id, "cat /etc/os-release", lxc)
-    os_info = {}
-    if os_release:
-        for line in os_release.splitlines():
-            if "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            k = k.lower()
-            if k in {"name", "pretty_name", "id", "version_id", "version_codename"}:
-                os_info[k] = v.strip().strip('"').strip("'")
-    info["os"] = os_info
+    info["os"] = _parse_os_release(os_release)
 
-    svc = guest_exec(
-        guest_id, "systemctl list-unit-files --type=service --state=enabled", lxc
-    )
-    services = (
-        [
-            line.split()[0]
-            for line in svc.splitlines()
-            if line.strip() and not line.startswith("UNIT FILE")
-        ]
-        if svc
-        else []
-    )
-    info["services_enabled"] = services
+    info["services_enabled"] = _get_enabled_services(guest_id, lxc)
 
-    docker = {"enabled": False, "containers": [], "compose_files": []}
-    if guest_exec(guest_id, "command -v docker >/dev/null && echo yes", lxc) == "yes":
-        docker["enabled"] = True
-        inspect = guest_exec(guest_id, "docker inspect $(docker ps -q)", lxc)
-        try:
-            docker["containers"] = json.loads(inspect) if inspect else []
-        except json.JSONDecodeError:
-            docker["containers"] = []
-        compose = guest_exec(
-            guest_id, "find / -type f -name '*-compose.yml' 2>/dev/null", lxc
-        )
-        docker["compose_files"] = compose.splitlines() if compose else []
+    docker = _get_docker_info(guest_id, lxc)
     info["docker"] = docker
 
     pkg = detect_package_manager(guest_id, lxc)
     pve_update = detect_pve_updateable(guest_id, lxc)
-    update_cmd = pkg.get("update_command", "")
-    if docker["enabled"]:
-        docker_update_cmds = ["docker system prune -f"]
-        if docker["containers"]:
-            docker_update_cmds.append("docker pull $(docker images -q)")
-        if docker["compose_files"]:
-            docker_update_cmds.append(
-                f"docker-compose -f {' '.join(docker['compose_files'])} pull"
-            )
-        docker_update = " && ".join(docker_update_cmds)
-        if docker_update:
-            update_cmd = (
-                f"{update_cmd} && {docker_update}" if update_cmd else docker_update
-            )
+    update_cmd = _compose_update_command(pkg.get("update"), docker) if False else _compose_update_command(pkg.get("update_command", "") if isinstance(pkg, dict) else pkg.get("update_command", ""), docker)  # keep compatibility with pkg dict key name
+    # Normalise update_command retrieval (pkg uses "update_command" in existing code)
+    if not update_cmd:
+        update_cmd = _compose_update_command(pkg.get("update_command", "") if isinstance(pkg, dict) else "", docker)
 
     info["package_manager"] = {
         "manager": pkg.get("name"),

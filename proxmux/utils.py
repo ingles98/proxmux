@@ -38,6 +38,13 @@ def log_error(msg: str) -> None:
     """
     logging.error("\033[1;31m[!]\033[0m %s", msg)
 
+def log_debug(msg: str) -> None:
+    """Log a debug message with a blue "[*]" prefix.
+
+    Thin wrapper around the module logger for consistency.
+    """
+    logging.debug("\033[1;34m[*]\033[0m %s", msg)
+
 
 PACKAGE_MANAGERS = {
     "apt": {

@@ -2,16 +2,18 @@
 
 import argparse
 from pathlib import Path
+import logging
 
-from utils import log_error
-from discover import discover_stack
-from htmlgen import generate_html_from_yaml, generate_html_from_stack
-from updates import run_update_check
+from .utils import log_error
+from .discover import discover_stack
+from .htmlgen import generate_html_from_yaml, generate_html_from_stack
+from .updates import run_update_check
 
 
 def main():
     """CLI entrypoint: parse arguments and dispatch discover, html, or updates commands."""
     p = argparse.ArgumentParser(prog="proxmux")
+    p.add_argument("-v", "--debug", action="store_true", help="Enable debug logging")
     s = p.add_subparsers(dest="cmd")
 
     d = s.add_parser("discover")
@@ -30,6 +32,9 @@ def main():
     u.add_argument("-l", "--list", action="store_true")
 
     a = p.parse_args()
+
+    if a.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     if a.cmd == "discover":
         stack = discover_stack(a.i)
