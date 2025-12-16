@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proxmux"
+version = "0.0.1"
+description = "Proxmox VM and LXC discovery, inventory, and update management tool"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "ingles98", email = "ingles98@github.com" }
+]
+requires-python = ">=3.8"
+
+dependencies = [
+  "PyYAML>=6.0",
+  "Jinja2>=3.1"
+]
+
+[project.scripts]
+proxmux = "proxmux.cli:main"
+
+[tool.setuptools]
+packages = ["proxmux"]
+
+[tool.setuptools.package-data]
+proxmux = ["templates/*.html"]

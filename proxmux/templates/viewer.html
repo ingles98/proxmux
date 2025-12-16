@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Proxmux Stack Viewer</title>
+
+<style>
+* { box-sizing: border-box; }
+
+:root {
+  --bg-main: #1e1f26;
+  --bg-panel: #262833;
+  --bg-hover: #2f3242;
+  --bg-active: #3a3f55;
+
+  --text-main: #dcdde1;
+  --text-muted: #a4a6b3;
+
+  --border: #3f4152;
+
+  --key: #4fc1ff;
+  --string: #7bed9f;
+  --number: #ffa502;
+  --boolean: #a29bfe;
+  --null: #a29bfe;
+  --jinja: #ff7675;
+  --comment: #6c757d;
+
+  --highlight: #ca930d2e;
+}
+
+body {
+  margin:0;
+  font-family: monospace;
+  height:100vh;
+  display:flex;
+  overflow:hidden;
+  background:var(--bg-main);
+  color:var(--text-main);
+}
+
+#left {
+  width:30%;
+  border-right:1px solid var(--border);
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  background:var(--bg-panel);
+}
+
+#list {
+  overflow:auto;
+  flex:1;
+}
+
+#right {
+  width:70%;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--bg-main);
+}
+
+input {
+  width:100%;
+  padding:8px;
+  margin-bottom:10px;
+  background:#111;
+  color:var(--text-main);
+  border:1px solid var(--border);
+}
+
+.item {
+  padding:6px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.item:hover { background:var(--bg-hover); }
+.item.active { background:var(--bg-active); }
+
+.badge {
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:4px;
+  margin-left:4px;
+}
+
+.vm { background:#0984e3; color:#fff; }
+.lxc { background:#00b894; color:#000; }
+.id { background:#636e72; color:#fff; }
+.offline { background:#d63031; color:#fff; }
+
+.tabs {
+  display:flex;
+  border-bottom:1px solid var(--border);
+}
+
+.tab {
+  padding:8px 12px;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  color:var(--text-muted);
+}
+
+.tab.active {
+  border-bottom:2px solid #4fc1ff;
+  color:var(--text-main);
+  font-weight:bold;
+}
+
+.tab-content {
+  display:none;
+  overflow:auto;
+  flex:1;
+}
+
+.tab-content.active {
+  display:block;
+}
+
+.tree ul {
+  list-style:none;
+  padding-left:18px;
+}
+
+.tree li {
+  cursor:pointer;
+  line-height:1.5;
+}
+
+.tree .toggle {
+  font-weight:bold;
+  margin-right:4px;
+  cursor:pointer;
+  color:var(--text-muted);
+}
+
+.tree .label {
+  cursor:pointer;
+}
+
+.key { color:var(--key); }
+.string { color:var(--string); }
+.number { color:var(--number); }
+.boolean { color:var(--boolean); }
+.null { color:var(--null); }
+
+/* YAML / Ansible */
+.yaml-key { color:var(--key); }
+.yaml-string { color:var(--string); }
+.yaml-number { color:var(--number); }
+.yaml-boolean { color:var(--boolean); }
+.yaml-null { color:var(--null); }
+.yaml-jinja { color:var(--jinja); }
+.yaml-comment { color:var(--comment); }
+.yaml-dash { color:#888; }
+
+.highlight {
+  background:var(--highlight);
+  color:#000;
+  border-radius:2px;
+  padding:1px 2px;
+}
+
+pre {
+  background:#111;
+  padding:10px;
+  overflow:auto;
+  height:100%;
+  color:var(--text-main);
+  white-space:pre;
+}
+
+.array-count {
+  color:#4fc1ff;
+  font-weight:bold;
+  margin-left:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="left">
+  <input id="search" placeholder="Search name, vmid, IP, service, compose…">
+  <div id="list"></div>
+</div>
+
+<div id="right">
+  <div class="tabs">
+    <div class="tab active" data-tab="json">Configuration</div>
+    <div class="tab" data-tab="ansible">Ansible</div>
+  </div>
+
+  <div id="json" class="tab-content tree active"></div>
+  <div id="ansible" class="tab-content">
+    <pre id="ansibleContent"></pre>
+  </div>
+</div>
+
+<script>
+const stack = {{ data | safe }};
+let currentSearch = "";
+let selectedItem = null;
+
+{% raw %}
+
+// ------------------------
+// YAML / Ansible Highlighter (DOM-based, like JSON tree)
+// ------------------------
+function highlightYAMLDOM(yaml) {
+  const root = document.createDocumentFragment();
+
+  // Split by lines
+  yaml.split("\n").forEach(line => {
+    const div = document.createElement("div");
+
+    // Match leading whitespace
+    const match = line.match(/^(\s*)(-)?\s*(.*)$/);
+    if (!match) {
+      div.textContent = line;
+      root.appendChild(div);
+      return;
+    }
+
+    const [_, indent, dash, rest] = match;
+
+    if (indent) div.appendChild(document.createTextNode(indent));
+
+    if (dash) div.appendChild(span("yaml-dash", dash + " "));
+
+    // Match key: value pattern
+    const kvMatch = rest.match(/^([a-zA-Z0-9_]+):\s*(.*)$/);
+    if (kvMatch) {
+      const [__, key, val] = kvMatch;
+      div.appendChild(span("yaml-key", key));
+      div.appendChild(document.createTextNode(": "));
+
+      if (val.startsWith("{{") && val.endsWith("}}")) {
+        div.appendChild(span("yaml-jinja", val));
+      } else if (val.match(/^".*"$/) || val.match(/^'.*'$/)) {
+        div.appendChild(span("yaml-string", val));
+      } else if (val === "true" || val === "false") {
+        div.appendChild(span("yaml-boolean", val));
+      } else if (val === "null") {
+        div.appendChild(span("yaml-null", val));
+      } else if (val.match(/^\d+$/)) {
+        div.appendChild(span("yaml-number", val));
+      } else if (val.startsWith("#")) {
+        div.appendChild(span("yaml-comment", val));
+      } else {
+        div.appendChild(document.createTextNode(val));
+      }
+    } else {
+      div.appendChild(document.createTextNode(rest));
+    }
+
+    root.appendChild(div);
+  });
+
+  return root;
+}
+{% endraw %}
+
+// ------------------------
+// Helpers
+// ------------------------
+function span(cls, txt) {
+  const s = document.createElement("span");
+  s.className = cls;
+  s.textContent = txt;
+  return s;
+}
+
+function valueNode(val) {
+  if (val === null) return span("null", "null");
+  if (typeof val === "string") return span("string", `"${val}"`);
+  if (typeof val === "number") return span("number", val);
+  if (typeof val === "boolean") return span("boolean", val);
+  return document.createTextNode(val);
+}
+
+// ------------------------
+// Flatten
+// ------------------------
+function flatten() {
+  const out = [{
+    key:"proxmox",
+    name:"Proxmox Node",
+    data:stack.proxmox
+  }];
+
+  stack.proxmox.guests.forEach(g => {
+    const id = g.vmid || g.ctid || g.id;
+    const name = g.name || g.hostname || String(id);
+    out.push({ key:id, name, id, type:g.type, status:g.status, data:g });
+  });
+  return out;
+}
+
+const ITEMS = flatten();
+
+// ------------------------
+// Left list
+// ------------------------
+function renderList(filter="") {
+  currentSearch = filter.toLowerCase();
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  ITEMS.filter(i =>
+    JSON.stringify(i.data).toLowerCase().includes(currentSearch)
+  ).forEach(i => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `
+      ${i.name}
+      ${i.type ? `<span class="badge ${i.type}">${i.type}</span>` : ""}
+      ${i.id ? `<span class="badge id">id:${i.id}</span>` : ""}
+      ${i.status === "offline" ? `<span class="badge offline">offline</span>` : ""}
+    `;
+    d.onclick = () => select(i, d);
+    list.appendChild(d);
+  });
+}
+
+// ------------------------
+// JSON Tree (syntax highlighted)
+// ------------------------
+function buildTree(obj) {
+  function walk(val, label) {
+    const li = document.createElement("li");
+    let matched = false;
+
+    const expand = (toggle, child) => {
+      child.style.display = "block";
+      toggle.textContent = "▼";
+    };
+
+    if (Array.isArray(val)) {
+      const toggle = span("toggle", "▶");
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.append(span("key", label));
+      lbl.insertAdjacentHTML("beforeend",
+        ` <span class="array-count">[${val.length}]</span>`
+      );
+
+      const child = document.createElement("ul");
+      child.style.display = "none";
+
+      val.forEach((v,i) => {
+        const c = walk(v, `[${i}]`);
+        if (c.dataset.match === "1") matched = true;
+        child.appendChild(c);
+      });
+
+      const toggleFn = () => {
+        const open = child.style.display === "none";
+        child.style.display = open ? "block" : "none";
+        toggle.textContent = open ? "▼" : "▶";
+      };
+      toggle.onclick = toggleFn;
+      lbl.onclick = toggleFn;
+
+      if (matched && currentSearch) expand(toggle, child);
+
+      li.dataset.match = matched ? "1" : "0";
+      li.append(toggle, lbl, child);
+      return li;
+    }
+
+    if (typeof val === "object" && val !== null) {
+      const toggle = span("toggle", "▶");
+      const lbl = span("key", label);
+
+      const child = document.createElement("ul");
+      child.style.display = "none";
+
+      Object.entries(val).forEach(([k,v]) => {
+        const c = walk(v, k);
+        if (c.dataset.match === "1") matched = true;
+        child.appendChild(c);
+      });
+
+      const toggleFn = () => {
+        const open = child.style.display === "none";
+        child.style.display = open ? "block" : "none";
+        toggle.textContent = open ? "▼" : "▶";
+      };
+      toggle.onclick = toggleFn;
+      lbl.onclick = toggleFn;
+
+      if (matched && currentSearch) expand(toggle, child);
+
+      li.dataset.match = matched ? "1" : "0";
+      li.append(toggle, lbl, child);
+      return li;
+    }
+
+    const keySpan = span("key", label);
+    const valSpan = valueNode(val);
+    li.append(keySpan, document.createTextNode(": "), valSpan);
+
+    const text = `${label}: ${JSON.stringify(val)}`;
+    if (currentSearch && text.toLowerCase().includes(currentSearch)) {
+      li.classList.add("highlight");
+      matched = true;
+    }
+
+    li.dataset.match = matched ? "1" : "0";
+    return li;
+  }
+
+  const ul = document.createElement("ul");
+  Object.entries(obj).forEach(([k,v]) => ul.appendChild(walk(v,k)));
+  return ul;
+}
+
+// ------------------------
+// Select
+// ------------------------
+function select(item, el) {
+  selectedItem = item;
+  document.querySelectorAll(".item").forEach(i => i.classList.remove("active"));
+  if (el) el.classList.add("active");
+
+  const json = document.getElementById("json");
+  json.innerHTML = "";
+  json.appendChild(buildTree(item.data));
+
+  const ansible = document.getElementById("ansibleContent");
+  ansible.innerHTML = ""
+  if (item.type) {
+    const yaml = generatePlaybook(item);
+    ansible.appendChild(highlightYAMLDOM(yaml));
+  } else {
+    ansible.textContent = "# Proxmox node";
+  }
+}
+
+// ------------------------
+// Tabs
+// ------------------------
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab,.tab-content")
+      .forEach(e => e.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById(t.dataset.tab).classList.add("active");
+  };
+});
+
+// ------------------------
+// Storage helper
+// ------------------------
+function cleanStorageValue(v) {
+  if (!v) return v;
+  return v.replace(/vm-\d+-disk-\d+/, "").replace(/,?size=/, "");
+}
+
+// ------------------------
+// FULL Ansible generator
+// ------------------------
+function generatePlaybook(item) {
+  const g = item.data;
+  const host = g.name || g.hostname;
+  const id = g.vmid || g.ctid;
+  const node = stack.proxmox.hostname || "pve";
+
+  let s = `- name: Configure ${host}\n`;
+  s += `  hosts: ${host}\n`;
+  s += `  vars_files:\n`;
+  s += `    - proxmox_creds.yml\n`;
+  s += `  tasks:\n`;
+
+  s += `    - name: Ensure VM/LXC configuration\n`;
+  s += `      community.general.proxmox:\n`;
+  s += `        api_user: '{{ '{{' }} proxmox_user {{ '}}' }}'\n`;
+  s += `        api_password: '{{ '{{' }} proxmox_password {{ '}}' }}'\n`;
+  s += `        api_host: '{{ '{{' }} proxmox_host {{ '}}' }}'\n`;
+  s += `        vmid: ${id}\n`;
+  s += `        name: ${host}\n`;
+  s += `        node: ${node}\n`;
+
+  if (g.type === "lxc") {
+    s += `        ostemplate: '{{ '{{' }} ostemplates.${g.os?.id || g.ostype || 'default'} {{ '}}' }}'\n`;
+    g.storage?.forEach(st => {
+      if (st.type === "rootfs") s += `        rootfs: ${cleanStorageValue(st.value)}\n`;
+      if (st.type === "swap") s += `        swap: ${cleanStorageValue(st.value)}\n`;
+    });
+    if (g.network?.length) {
+      s += "        net:\n";
+      g.network.forEach((n,i) => {
+        s += `          - name: ${n.ifname || "eth"+i}\n`;
+        s += `            bridge: ${n.bridge || "vmbr0"}\n`;
+        if (n.ip) s += `            ip: ${n.ip}\n`;
+      });
+    }
+  }
+
+  if (g.host_devices?.length) {
+    s += "        host_devices:\n";
+    g.host_devices.forEach(d => s += `          - ${d}\n`);
+  }
+
+  if (g.type === "vm") {
+    s += "        state: present\n";
+    if (g.cores) s += `        cores: ${g.cores}\n`;
+    if (g.memory) s += `        memory: ${g.memory}\n`;
+    g.storage?.forEach(st => {
+      if (st.type !== "scsihw")
+        s += `        ${st.type}: ${cleanStorageValue(st.value)}\n`;
+    });
+    s += `        ostype: ${g.ostype || "l26"}\n`;
+    g.network?.forEach((_,i) => s += `        net${i}: virtio,bridge=vmbr0\n`);
+    s += "        boot: c\n";
+  }
+
+  if (g.docker?.enabled) {
+    s += "    - name: Ensure Docker installed\n";
+    s += "      package:\n";
+    s += "        name: docker\n";
+    s += "        state: present\n";
+  }
+
+  return s;
+}
+
+// ------------------------
+// Search
+// ------------------------
+document.getElementById("search").oninput = e => {
+  renderList(e.target.value);
+  if (!e.target.value && selectedItem) {
+    const json = document.getElementById("json");
+    json.innerHTML = "";
+    json.appendChild(buildTree(selectedItem.data));
+  }
+};
+
+// Initial load
+renderList();
+select(ITEMS[0], null);
+</script>
+
+</body>
+</html>
