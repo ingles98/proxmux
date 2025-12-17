@@ -320,7 +320,7 @@ def discover_guest(
         if docker["containers"]:
             docker_update_cmds.append("docker pull $(docker images -q)")
         if docker["compose_files"]:
-            docker_update_cmds.append(f"docker-compose -f {" ".join(docker["compose_files"])} pull")
+            docker_update_cmds.append(f'docker-compose -f {" ".join(docker["compose_files"])} pull')
         docker_update = " && ".join(docker_update_cmds)
         if docker_update:
             update_cmd = f"{update_cmd} && {docker_update}" if update_cmd else docker_update
