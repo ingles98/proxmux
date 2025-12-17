@@ -1,0 +1,41 @@
+# Changelog
+
+## Unreleased (2025-12-17)
+[Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.1...HEAD)
+
+### Fixes
+
+- Fix whatever the hell happened to update_cmd. [cab3a42](https://github.com/ingles98/proxmux/commit/cab3a4233f443a2817a235b597e06641414518e5)
+    
+- Fixed all relative imports. [fa2d2ca](https://github.com/ingles98/proxmux/commit/fa2d2cac60980ca9171e7a428b1f73f306247933)
+    
+### Other
+
+- Possible fix for pylint on gh actions. [c5d9caa](https://github.com/ingles98/proxmux/commit/c5d9caa328736dfd0e20ab9c3f0b5effe8980026)
+    
+- Project setup. [5448fbc](https://github.com/ingles98/proxmux/commit/5448fbcf0381e07c30b6f8ad491c80fc28872f7c)
+    
+- Major fixes to the damned vibe coded mess (still a mess tho). [6accca5](https://github.com/ingles98/proxmux/commit/6accca53f393a7641b2295df04db0bbe717b0898)
+    
+- Code cleanup and quality check. [040e2f4](https://github.com/ingles98/proxmux/commit/040e2f4db0b82e0711f21afa499bf24c11f75368)
+    
+### Updates
+
+- Removed old __init__ and fixed pylint pipeline. [b2dec7d](https://github.com/ingles98/proxmux/commit/b2dec7daa7fdd51b7f55b52ca78c93ffd45d6897)
+    
+## 0.0.1 (2025-12-16)
+
+### New
+
+- Add GitHub Actions workflow for Python package. [697dbd1](https://github.com/ingles98/proxmux/commit/697dbd1fb34ac52f035569b821e10ddecf31cfe9)
+    
+  This workflow installs Python dependencies, runs tests, and lints code with multiple Python versions.
+- Add Pylint workflow for Python code analysis. [a86c52d](https://github.com/ingles98/proxmux/commit/a86c52d70cfd0a479f216b03805f3b8d07506cf2)
+    
+### Other
+
+- Initial code. [d42da98](https://github.com/ingles98/proxmux/commit/d42da98c7d334701d1f356e4cc020d07ea26be26)
+    
+- Initial commit. [c0fbaa7](https://github.com/ingles98/proxmux/commit/c0fbaa7a3d256b97b860fbfc79283addefa8a2bc)
+    
+

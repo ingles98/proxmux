@@ -28,7 +28,7 @@ packages = ["proxmux"]
 proxmux = ["templates/*.html"]
 
 [tool.bumpversion]
-current_version = "1.2.5"
+current_version = "0.0.1"
 commit = true
 commit_args = "--no-verify"
 tag = true
