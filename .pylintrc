@@ -1,0 +1,33 @@
+[MASTER]
+jobs=0
+persistent=no
+ignore=venv,.venv,dist,build,.git,__pycache__
+
+[MESSAGES CONTROL]
+disable=
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    C0103,  # invalid-name
+    R0902,  # too-many-instance-attributes
+    R0903,  # too-few-public-methods
+    R0912,  # too-many-branches
+    R0913,  # too-many-arguments
+    R0914,  # too-many-locals
+    R0915,  # too-many-statements
+    W0511,  # TODO / FIXME
+    W0703,  # broad-except
+    W0621,  # redefined-outer-name
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-args=10
+max-locals=25
+max-branches=20
+max-statements=60
+
+[REPORTS]
+score=yes
+fail-under=8.0
