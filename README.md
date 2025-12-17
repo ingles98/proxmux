@@ -1,5 +1,10 @@
 # proxmux
 
+[![image](https://img.shields.io/pypi/v/proxmux.svg)](https://pypi.org/project/proxmux/)
+[![image](https://img.shields.io/pypi/l/proxmux.svg)](https://github.com/ingles98/proxmux/blob/main/LICENSE)
+[![image](https://img.shields.io/pypi/pyversions/proxmux.svg)](https://pypi.org/project/proxmux/)
+[![GitHub Actions](https://github.com/ingles98/proxmux/workflows/CI/badge.svg)](https://github.com/ingles98/proxmux/actions)
+
 **proxmux** is a Proxmox VE fleet discovery and maintenance toolkit.  
 It allows you to discover, inventory, visualize, and audit updates for Proxmox VMs and LXCs directly from the Proxmox host.
 
@@ -129,6 +134,10 @@ Updates are audit-only for now (no changes applied)
 
 proxmux is designed to be safe by default
 
+## 📜 Changelog
+
+Please find the changelog here: [CHANGELOG.md](https://github.com/ingles98/proxmux/blob/main/CHANGELOG.md)
+
 ## 🛣️ Roadmap
 
 - `proxmux upgrade` `--dry-run` / `--apply`
@@ -143,7 +152,7 @@ proxmux is designed to be safe by default
 
 ## 📜 License
 
-MIT License
+MIT License - see the [LICENSE](https://github.com/ingles98/proxmux/blob/main/LICENSE) file for details
 
 ## 🤝 Contributing
 
