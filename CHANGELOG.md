@@ -1,7 +1,7 @@
 # Changelog
 
-## Unreleased (2025-12-17)
-[Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.1...HEAD)
+## 0.0.2 (2025-12-17)
+[Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.1...0.0.2)
 
 ### Fixes
 
@@ -11,6 +11,10 @@
     
 ### Other
 
+- Chore: removed stuff that shouldn've have come along from the example bymp-my-version toml. [49e21c1](https://github.com/ingles98/proxmux/commit/49e21c158428e16dbf2be61542a070422408cddb)
+    
+- Generated first changelog and fixed version on toml. [693dfa4](https://github.com/ingles98/proxmux/commit/693dfa466327d33bba05a5d1150ff6044b609fc4)
+    
 - Possible fix for pylint on gh actions. [c5d9caa](https://github.com/ingles98/proxmux/commit/c5d9caa328736dfd0e20ab9c3f0b5effe8980026)
     
 - Project setup. [5448fbc](https://github.com/ingles98/proxmux/commit/5448fbcf0381e07c30b6f8ad491c80fc28872f7c)
@@ -23,6 +27,7 @@
 
 - Removed old __init__ and fixed pylint pipeline. [b2dec7d](https://github.com/ingles98/proxmux/commit/b2dec7daa7fdd51b7f55b52ca78c93ffd45d6897)
     
+
 ## 0.0.1 (2025-12-16)
 
 ### New
