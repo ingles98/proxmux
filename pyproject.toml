@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proxmux"
-version = "0.1.0"
+version = "0.1.1"
 description = "Proxmox VM and LXC discovery, inventory, and update management tool"
 readme = "README.md"
 license = { text = "MIT" }
@@ -28,7 +28,7 @@ packages = ["proxmux"]
 proxmux = ["templates/*.html"]
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.1.1"
 commit = true
 commit_args = "--no-verify"
 tag = true

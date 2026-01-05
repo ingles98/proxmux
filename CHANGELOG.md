@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 (2026-01-05)
+[Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.1.0...0.1.1)
+
+### Other
+
+- Hotfix: new yaml parameter conflicted with yaml module. [cf76a91](https://github.com/ingles98/proxmux/commit/cf76a91700607ea46d01f3435192b668cad66d10)
+    
+
 ## 0.1.0 (2026-01-05)
 [Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.2...0.1.0)
 
