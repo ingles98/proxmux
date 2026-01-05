@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0 (2026-01-05)
+[Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.2...0.1.0)
+
+### Other
+
+- Feat: added --yaml for YML output to the proxmux updates command. [8020906](https://github.com/ingles98/proxmux/commit/802090604b862624fd07809470ad0ec6aa961320)
+    
+- Chore: Updated README.md to include badges and some missing links. [3bc4559](https://github.com/ingles98/proxmux/commit/3bc4559034c054e2da0cb25b5d3b643f318c1732)
+    
+
 ## 0.0.2 (2025-12-17)
 [Compare the full difference.](https://github.com/ingles98/proxmux/compare/0.0.1...0.0.2)
 
