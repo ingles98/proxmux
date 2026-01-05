@@ -30,6 +30,7 @@ def main():
     u = s.add_parser("updates")
     u.add_argument("-i", default="prox_stack.yml")
     u.add_argument("-l", "--list", action="store_true")
+    u.add_argument("--yaml", action="store_true", help="Output results in YAML format")
 
     a = p.parse_args()
 
@@ -54,6 +55,6 @@ def main():
             return
         generate_html_from_yaml(a.i, a.o)
     elif a.cmd == "updates":
-        run_update_check(a.i, a.list)
+        run_update_check(a.i, a.list, a.yaml)
     else:
         p.print_help()
