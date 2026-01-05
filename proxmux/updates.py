@@ -105,7 +105,7 @@ def print_results(results, list_packages=False):
         print()
 
 
-def run_update_check(stack_path, list_pkgs=False, yaml=False):
+def run_update_check(stack_path, list_pkgs=False, render_yml=False):
     """Check each Proxmox guest defined in the stack file for available package updates.
 
     This function reads the stack YAML at `stack_path`, iterates over guests defined
@@ -160,7 +160,7 @@ def run_update_check(stack_path, list_pkgs=False, yaml=False):
             }
         )
 
-    if list_pkgs and yaml:
+    if list_pkgs and render_yml:
         # Output results as YAML
         print(yaml.dump(results, sort_keys=False))
     else:
